@@ -64,4 +64,4 @@ async def patch_book(book_id: int, patch_data: Book):
             books_db[books_db.index(book)] = update_book
             return {"message":f"BOOK with id {book_id} has been patched", "book": updated_book}
     if stored_book_data is None:
-        raise  HTTPException(status_code=404, detail=("BOOK with id {book_id} not found")) 
+        raise  HTTPException(status_code=404, detail=("BOOK with id {book_id} not found"))
