@@ -7,6 +7,7 @@ from ..models.books import Book
 from ..models.categories import Category, book_category
 from ..utils.cache import cache, invalidate_cache
 
+
 class BookRepository(BaseRepository[Book, None, None]):
     def get_by_isbn(self, *, isbn: str) -> Optional[Book]:
         """
@@ -49,7 +50,6 @@ class BookRepository(BaseRepository[Book, None, None]):
                 Book.isbn.ilike(f"%{query}%")
             )
         ).all()
-        
 
     def get_by_category(self, *, category_id: int, skip: int = 0, limit: int = 100) -> List[Book]:
         """
@@ -102,7 +102,10 @@ class BookRepository(BaseRepository[Book, None, None]):
             "unique_books": unique_books,
             "avg_publication_year": avg_publication_year
         }
-        
+    
+class BookRepository(BaseRepository[Book, None, None]):
+    # ...
+
     @cache(expiry=60)  # Cache pendant 1 minute
     def get_stats(self) -> Dict[str, Any]:
         """
