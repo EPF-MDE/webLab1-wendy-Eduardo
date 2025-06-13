@@ -7,7 +7,6 @@ from ..models.books import Book
 from ..models.categories import Category, book_category
 from ..utils.cache import cache, invalidate_cache
 
-
 class BookRepository(BaseRepository[Book, None, None]):
     def get_by_isbn(self, *, isbn: str) -> Optional[Book]:
         """
@@ -102,9 +101,6 @@ class BookRepository(BaseRepository[Book, None, None]):
             "unique_books": unique_books,
             "avg_publication_year": avg_publication_year
         }
-    
-class BookRepository(BaseRepository[Book, None, None]):
-    # ...
 
     @cache(expiry=60)  # Cache pendant 1 minute
     def get_stats(self) -> Dict[str, Any]:
@@ -122,12 +118,25 @@ class BookRepository(BaseRepository[Book, None, None]):
         }
 
     def create(self, *, obj_in: Any) -> Book:
-        """
-        Crée un nouveau livre et invalide le cache.
-        """
-        book = super().create(obj_in=obj_in)
+        # Extrae datos, excluyendo category_ids
+        obj_data = obj_in.model_dump() if hasattr(obj_in, "model_dump") else obj_in.dict()
+        category_ids = obj_data.pop("category_ids", [])
+
+        # Crear el libro sin las categorías
+        db_obj = self.model(**obj_data)
+        self.db.add(db_obj)
+
+        # Asociar categorías si se proporcionaron
+        if category_ids:
+            categories = self.db.query(Category).filter(Category.id.in_(category_ids)).all()
+            for category in categories:
+                db_obj.categories.append(category)
+
+        self.db.commit()
+        self.db.refresh(db_obj)
+
         invalidate_cache("src.repositories.books")
-        return book
+        return db_obj
 
     def update(self, *, db_obj: Book, obj_in: Any) -> Book:
         """

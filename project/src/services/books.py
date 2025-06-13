@@ -1,5 +1,6 @@
 from typing import List, Optional, Any, Dict, Union
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from ..repositories.books import BookRepository
 from ..models.books import Book
@@ -57,6 +58,12 @@ class BookService(BaseService[Book, BookCreate, BookUpdate]):
             raise ValueError("La quantité ne peut pas être négative")
 
         return self.repository.update(db_obj=book, obj_in={"quantity": new_quantity})
+    
+    def search(self, *, query: str) -> List[Book]:
+        """
+        Recherche des livres par titre, auteur ou ISBN.
+        """
+        return self.repository.search(query=query)
     
     
     
