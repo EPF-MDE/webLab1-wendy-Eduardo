@@ -173,16 +173,27 @@ const App = {
         });
     },
 
-    loadBooksPage: async function() {
-        UI.showLoading();
+    loadBooksPage: async function(query = '') {
+        UI.showLoading();   
 
         try {
-            const response = await Api.getBooks();
+            const response = query
+                ? await Api.searchBooks(query)
+                : await Api.getBooks();
+            
+            if (!response || !response.items) {
+                throw new Error("Réponse invalide du serveur.")
+            }
+            
             const books = response.items;
 
             let html = `
                 <h2 class="mb-20">Catalogue de Livres</h2>
-                <div class="card-container">
+                <div class="form-group">
+                    <input type="text" id="search-input" class="form-control" placeholder="Rechercher par titre, auteur ou ISBN">
+                </div>
+                <button class="btn mt-10" id="search-button">Rechercher</button>
+                <div class="card-container" id="books-container">
             `;
 
             if (books.length === 0) {
@@ -202,6 +213,8 @@ const App = {
                             </div>
                             <div class="card-footer">
                                 <button class="btn" onclick="App.viewBookDetails(${book.id})">Voir détails</button>
+                                <button class="btn mt-20" onclick="App.borrowBook(${book.id})">Emprunter</button>
+
                             </div>
                         </div>
                     `;
@@ -211,12 +224,42 @@ const App = {
             html += `</div>`;
 
             UI.setContent(html);
+
+            document.getElementById('search-button').addEventListener('click', async () => {
+                const newQuery = document.getElementById('search-input').value.trim();
+                await App.loadBooksPage(newQuery);
+            });
+
         } catch (error) {
             console.error('Erreur lors du chargement des livres:', error);
-            UI.setContent(`<p>Erreur lors du chargement des livres. Veuillez réessayer.</p>`);
+            UI.setContent(`
+                <p>Erreur lors de la recherche. Veuillez réessayer.</p>
+                <button class="btn mt-20" onclick="App.loadBooksPage()">Retour</button>
+            `);
+        }
+
+        UI.hideLoading();
+    },
+
+    borrowBook: async function(bookId) {
+        try {
+            await Api.borrowBook(bookId);
+            UI.showMessage("Emprunt effectué avec succès", "success");
+            this.loadPage('loans');  // redirige vers la liste
+        } catch (error) {
+            console.error("Erreur d'emprunt:", error);
         }
     },
 
+    returnLoan: async function(loanId) {
+        try {
+            await Api.returnLoan(loanId);
+            UI.showMessage("Livre retourné avec succès", "success");
+            this.loadLoansPage();
+        } catch (error) {
+            console.error("Erreur de retour:", error);
+        }
+    },
 
     // Affiche les détails d'un livre
     viewBookDetails: async function(bookId) {
@@ -312,10 +355,16 @@ const App = {
                     </div>
 
                     <button class="btn" id="edit-profile-btn">Modifier le profil</button>
+                    <button class="btn mt-10" id="change-password-btn">Changer le mot de passe</button>
                 </div>
             `;
 
             UI.setContent(html);
+            
+            document.getElementById('change-password-btn').addEventListener('click', () =>{
+                this.loadChangePasswordPage();
+            });
+
             UI.hideLoading();
 
             // Configurer le bouton de modification du profil
@@ -327,6 +376,102 @@ const App = {
             UI.setContent(`<p>Erreur lors du chargement du profil. Veuillez réessayer.</p>`);
         }
     },
+
+    //loans page
+    loadLoansPage: async function() {
+        UI.showLoading();
+
+        try {
+            const loans = await Api.getUserLoans();
+
+            let html = `
+                <h2 class="mb-20">Mes Emprunts</h2>
+                <div class="card-container">
+            `;
+
+            if (loans.length === 0) {
+                html += `<p>Aucun emprunt actif.</p>`;
+            } else {
+                loans.forEach(loan => {
+                    html += `
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>${loan.book.title}</h3>
+                            </div>
+                            <div class="card-body">
+                                <p><strong>Auteur:</strong> ${loan.book.author}</p>
+                                <p><strong>ISBN:</strong> ${loan.book.isbn}</p>
+                                <p><strong>Date d'emprunt:</strong> ${loan.loan_date}</p>
+                                <p><strong>Échéance:</strong> ${loan.due_date}</p>
+                                <p><strong>Statut:</strong> ${loan.return_date ? "Retourné" : "En cours"}</p>
+                            </div>
+                            ${!loan.return_date ? `
+                                <div class="card-footer">
+                                    <button class="btn" onclick="App.returnLoan(${loan.id})">Retourner</button>
+                                </div>
+                            ` : ""}
+                        </div>
+                    `;
+                });
+            }
+
+            html += `</div>`;
+            UI.setContent(html);
+        } catch (error) {
+            console.error("Erreur lors du chargement des emprunts:", error);
+            UI.setContent(`<p>Erreur lors du chargement des emprunts.</p>`);
+        }
+
+        UI.hideLoading();
+    },
+
+    //change password page
+    loadChangePasswordPage: function() {
+        const html = `
+            <div class="form-container">
+                <h2 class="text-center mb-20">Changer le mot de passe</h2>
+                <form id="change-password-form">
+                    <div class="form-group">
+                        <label for="current_password">Mot de passe actuel</label>
+                        <input type="password" id="current_password" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="new_password">Nouveau mot de passe</label>
+                        <input type="password" id="new_password" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Confirmer le nouveau mot de passe</label>
+                        <input type="password" id="confirm_password" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-block">Valider</button>
+                </form>
+                <button class="btn btn-block mt-20" onclick="App.loadPage('profile')">Annuler</button>
+            </div>
+        `;
+
+        UI.setContent(html);
+
+        document.getElementById('change-password-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const current = document.getElementById('current_password').value;
+            const newPass = document.getElementById('new_password').value;
+            const confirm = document.getElementById('confirm_password').value;
+
+            if (newPass !== confirm) {
+                UI.showMessage("Les mots de passe ne correspondent pas", "error");
+                return;
+            }
+
+            try {
+                await Api.changePassword(current, newPass);
+                UI.showMessage("Mot de passe mis à jour avec succès", "success");
+                App.loadPage('profile');
+            } catch (error) {
+                console.error("Erreur:", error);
+            }
+        });
+    },
+
 
     // Charge la page de modification du profil
     loadEditProfilePage: function(user) {

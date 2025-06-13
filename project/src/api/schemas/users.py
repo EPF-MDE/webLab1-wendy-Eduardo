@@ -41,3 +41,7 @@ class User(UserInDBBase):
 
 class UserWithPassword(UserInDBBase):
     hashed_password: str
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(..., min_length=8, description="Mot de passe actuel")
+    new_password: str = Field(..., min_length=8, description="Nouveau mot de passe")

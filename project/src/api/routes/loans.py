@@ -13,6 +13,7 @@ from ...repositories.books import BookRepository
 from ...repositories.users import UserRepository
 from ...services.loans import LoanService
 from ..dependencies import get_current_active_user, get_current_admin_user
+from ..schemas.loans import LoanRequest
 
 router = APIRouter()
 
@@ -39,13 +40,11 @@ def read_loans(
 def create_loan(
     *,
     db: Session = Depends(get_db),
-    user_id: int,
-    book_id: int,
-    loan_period_days: int = 14,
-    current_user = Depends(get_current_admin_user)
+    request: LoanRequest,
+    current_user = Depends(get_current_active_user)
 ) -> Any:
     """
-    Crée un nouvel emprunt.
+    Crée un nouvel emprunt pour l'utilisateur connecté.
     """
     loan_repository = LoanRepository(LoanModel, db)
     book_repository = BookRepository(BookModel, db)
@@ -54,9 +53,9 @@ def create_loan(
 
     try:
         loan = service.create_loan(
-            user_id=user_id,
-            book_id=book_id,
-            loan_period_days=loan_period_days
+            user_id=current_user.id,
+            book_id=request.book_id,
+            loan_period_days=14  # durée fixe ici
         )
         return loan
     except ValueError as e:

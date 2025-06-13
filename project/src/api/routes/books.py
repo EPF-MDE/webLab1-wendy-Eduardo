@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from typing import List, Any
 from ...utils.pagination import PaginationParams, paginate, Page
 from ...db.session import get_db
@@ -9,6 +10,8 @@ from ...repositories.books import BookRepository
 from ...services.books import BookService
 from ..dependencies import get_current_active_user, get_current_admin_user
 from typing import Optional
+from ..schemas.users import PasswordChangeRequest
+from ...utils.security import get_password_hash, verify_password
 
 
 router = APIRouter()
@@ -159,7 +162,6 @@ def search_books_by_author(
     service = BookService(repository)
     books = service.get_by_author(author=author)
     return books
-
 
 @router.get("/search/isbn/{isbn}", response_model=Book)
 def search_book_by_isbn(

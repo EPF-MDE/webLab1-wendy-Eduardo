@@ -83,8 +83,38 @@ const Api = {
         }
     },
 
+    getUserLoans: async function() {
+        const user = Auth.getUser();
+        return this.call(`/loans/user/${user.id}`);
+    },
+
+    borrowBook: async function(bookId) {
+        const user = Auth.getUser();
+        return this.call(`/loans/`, 'POST', {
+            user_id: user.id,
+            book_id: bookId
+        });
+    },
+
+    returnLoan: async function(loanId) {
+        return this.call(`/loans/${loanId}/return`, 'POST');
+    },
+
+    //Search toolbar for books
+    searchBooks: async function(query) {
+        return this.call(`/books/search/?query=${encodeURIComponent(query)}`);
+    },
+
     register: async function(userData) {
         return this.call('/users/', 'POST', userData);
+    },
+
+    //change password method
+    changePassword: async function (currentPassword, newPassword) {
+        return this.call('/users/change-password', 'POST', {
+            current_password: currentPassword,
+            new_password: newPassword
+        });        
     },
 
     getCurrentUser: async function() {

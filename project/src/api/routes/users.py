@@ -8,6 +8,9 @@ from ..schemas.users import User, UserCreate, UserUpdate
 from ...repositories.users import UserRepository
 from ...services.users import UserService
 from ..dependencies import get_current_active_user, get_current_admin_user
+from ..schemas.users import PasswordChangeRequest
+from ...utils.security import get_password_hash, verify_password
+
 
 router = APIRouter()
 
@@ -63,6 +66,29 @@ def read_user_me(
     """
     return current_user
 
+@router.post("/change-password")
+def change_password(
+    request: PasswordChangeRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
+):
+    """
+    Permet à l'utilisateur connecté de changer son mot de passe.
+    """
+    repository = UserRepository(UserModel, db)
+
+    # Vérifier le mot de passe actuel
+    if not verify_password(request.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Mot de passe actuel incorrect"
+        )
+
+    # Hasher et mettre à jour le nouveau mot de passe
+    hashed = get_password_hash(request.new_password)
+    user = repository.update(db_obj=current_user, obj_in={"hashed_password": hashed})
+
+    return {"message": "Mot de passe mis à jour avec succès"}
 
 @router.put("/me", response_model=User)
 def update_user_me(

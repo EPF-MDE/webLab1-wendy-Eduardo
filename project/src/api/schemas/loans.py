@@ -13,6 +13,8 @@ class LoanBase(BaseModel):
     due_date: datetime = Field(..., description="Date d'échéance")
     extended: bool = Field(False, description="Indique si l'emprunt a été prolongé")
 
+class LoanRequest(BaseModel):
+    book_id: int = Field(..., description="ID du livre à emprunter")
 
 class LoanCreate(LoanBase):
     pass
